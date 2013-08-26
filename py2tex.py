@@ -556,7 +556,7 @@ def load_ipython_extension(ip):
 
 # code below to be uncommented for testing code with
 # simple "import py2tex" statement
-ip=get_ipython()
-magicPrettyPrint = PrettyPrint(ip)
-ip.register_magics(magicPrettyPrint)
+#ip=get_ipython()
+#magicPrettyPrint = PrettyPrint(ip)
+#ip.register_magics(magicPrettyPrint)
 
