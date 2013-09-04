@@ -358,12 +358,39 @@ class PrettyPrint(Magics):
             return False
         # if reached this statement, must be unum assignment
         return True
+    
+    def parseOptionTags(self,expression):
+        """Checks an expression for option tags and returns a dictionary
+        with the results
+        
+        Example return: {'#asUnit': 'mm**2', '#nodisplay': True, '#format': '%.e3'}
+        Default return: {"#nodisplay": False}
+        """
+        tags = ["#asUnit", "#format", "#nodisplay"]
+        parsed = re.split('('+'|'.join(tags)+')',expression)
+        options = {"#nodisplay": False}
+        if len(parsed)==1:
+            #no option tags
+            return options
+        else:
+            for i in range(1,len(parsed)):
+                    if parsed[i]=="#asUnit":
+                        options[parsed[i]] = parsed[i+1].strip()
+                    if parsed[i]=="#format":
+                        options[parsed[i]] = parsed[i+1].strip()
+                        try:
+                            options[parsed[i]] % (3.1415)
+                        except ValueError:
+                            raise ValueError(options[parsed[i]] + " is not a supported #format")
+                    elif parsed[i]=="#nodisplay":
+                        options[parsed[i]] = True
+            return options
+        
         
     def hasAsUnit(self,expression):
         """Check if the expression has an conversion tag at the end. 
         Returns None or (expression, unit)"""
-        
-        temp = re.split("asUnit",expression)
+        temp = re.split("#asUnit",expression)
         if len(temp)==1:
             return None
         if len(temp)==2:
