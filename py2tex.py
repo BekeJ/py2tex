@@ -415,8 +415,15 @@ class LatexVisitor(ast.NodeVisitor):
 
     def visit_Name(self, n):
         #test if unum
-        if n.id in unum.Unum._unitTable.keys():
-            return "\\mbox{%s}" % n.id
+        result = get_ipython().ev(n.id) #gets the variable
+        if type(result)==unum.Unum:
+            if n.id in unum.Unum._unitTable.keys():
+                if result._value==1:  
+                    # we must test if value==1. unitTable contains units like L, V, etc.
+                    return "\\mbox{%s}" % n.id
+                    
+        # was not a base unit
+                    
         #parse greek letters
         name = n.id.split("_")
         for i in range(len(name)):
