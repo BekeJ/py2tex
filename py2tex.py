@@ -25,10 +25,6 @@ In [5]: %texformat %.3e
 In [6]: %tex e**10
 e**10 = 2.203 \cdot 10^{4} 
 
-In [7]: %texnr c = sqrt(a**2+b**2)
-c = sqrt(a**2+b**2)
-
-
 When IPython TeX rendering is enabled, the results are displayed with TeX !!!
 
 Usage
@@ -43,14 +39,6 @@ One line TeX conversion with result output.
 ``%%tex``
 
 Multi line TeX conversion with result output.
-
-``%texnr``
-
-One line TeX conversion without result output.
-
-``%%texnr``
-
-Multi line TeX conversion without result output.
 
 ``%texformat``
 
@@ -74,6 +62,11 @@ eg. v = 10*m/s  is not displayed like v = 10*m/s = 10 m/s as in previous version
 
 Version history
 ===============
+    release 0.4:
+    - bugfix for units in expressions
+    - #nodisplay and #format tag (see example notebook)
+    - removed %texnr magic
+
     release 0.3:
     - bugfix for units in expressions
     - #asUnit conversion tag (see example notebook)
@@ -177,25 +170,13 @@ class PrettyPrint(Magics):
     def tex(self, line, cell= None):
         """Cell and line magic %tex"""
         #always do first line
-        self.doLine(line)
+        self.doLine(line, self.parseOptionTags(line))
         #in case of cellmagic (with %%tex)
         if not (cell is None):
             for cline in cell.split("\n"):
                 if len(cline)>0:
-                    self.doLine(cline)
-                
-                
-    @line_cell_magic
-    def texnr(self, line, cell= None):
-        """Cell and line magic %texnr"""
-        #always do first line
-        self.doLine(line,True)
-        #in case of cellmagic (with %%tex)
-        if not (cell is None):
-            for cline in cell.split("\n"):
-                if len(cline)>0:
-                    self.doLine(cline,True)
-                
+                    self.doLine(cline, self.parseOptionTags(cline))
+
     @line_magic
     def texformat(self, line):
         """cell magic to set the result format string"""
@@ -206,60 +187,64 @@ class PrettyPrint(Magics):
         except ValueError:
             raise ValueError(arg + " is not supported")
 
-    def doLine(self,line,no_result = False):
+    def doLine(self,line, options):
         """Method to convert and print one line
         """
-        #check for assignment 
-        i = line.find("=")
-        if i<0 or line[i+1]=='=':
-            # no assignment : print expression = result
-            result = self.shell.ev(line)
-            
-            #check for unit conversion
-            temp = self.hasAsUnit(line)
-            if not temp==None:
-                result = result.asUnit(self.shell.ev(temp[1]))
-            
-            self.display(self.py2tex(line)+" = "+self.numericToString(result),
-                        line+" = "+self.numericToString(result))
-
+        if options["#nodisplay"]:
+            #simply execute the wanted line and return function
+            self.shell.ex(line)
         else:
-            # expression was assignment
-            variable = line[:i].strip()
-            expression = line[i+1:].strip()
-            result = self.shell.ev(expression)
+            no_result = options["#noresult"]
             
-            #check for unit conversion and do conversion on the result if needed
-            temp = self.hasAsUnit(line)
-            if not temp==None:
-                result = result.asUnit(self.shell.ev(temp[1]))
-            
-            self.shell.push({variable: result})
-            
-            
-            temp = re.findall('[-+]?\d*\.\d+[eE][-+]?\d+|[-+]?\d*\.\d+|[-+]?\d+', expression.strip())
-            try:
-                temp=float(expression)
-                # assignment: variable = number
-                self.display(self.parseVariable(variable.strip())+" = "+self.py2tex(expression),
-                            line)
+            #check for assignment 
+            i = line.find("=")
+            if i<0 or line[i+1]=='=':
+                # no assignment : print expression = result
+                result = self.shell.ev(line)
                 
-            except ValueError:
-                if no_result:
-                    # assignment: variable = expression
+                #check for unit conversion and do conversion on the result if needed
+                if options.has_key("#asUnit"):
+                    result = result.asUnit(self.shell.ev(options["#asUnit"]))
+                
+                self.display(self.py2tex(line)+" = "+self.numericToString(result),
+                            line+" = "+self.numericToString(result))
+
+            else:
+                # expression was assignment
+                variable = line[:i].strip()
+                expression = line[i+1:].strip()
+                result = self.shell.ev(expression)
+                
+                #check for unit conversion and do conversion on the result if needed
+                if options.has_key("#asUnit"):
+                    result = result.asUnit(self.shell.ev(options["#asUnit"]))
+                
+                self.shell.push({variable: result})
+                
+                
+                temp = re.findall('[-+]?\d*\.\d+[eE][-+]?\d+|[-+]?\d*\.\d+|[-+]?\d+', expression.strip())
+                try:
+                    temp=float(expression)
+                    # assignment: variable = number
                     self.display(self.parseVariable(variable.strip())+" = "+self.py2tex(expression),
                                 line)
-                else:
-                    # assignment: variable = expression = number
-                    # unit is always an expression so test first
-                    if self.isUnumAssignment(expression):
-                        #unit assignment, print only result
-                        self.display(self.parseVariable(variable.strip())+" = "+self.numericToString(self.shell.ev(expression)),
-                                    line+" = "+self.numericToString(self.shell.ev(variable.strip())) )
+                    
+                except ValueError:
+                    if no_result:
+                        # assignment: variable = expression
+                        self.display(self.parseVariable(variable.strip())+" = "+self.py2tex(expression),
+                                    line)
                     else:
                         # assignment: variable = expression = number
-                        self.display(self.parseVariable(variable.strip())+" = "+self.py2tex(expression)+" = "+self.numericToString(self.shell.ev(variable.strip())),
-                                    line+" = "+self.numericToString(self.shell.ev(variable.strip())) )
+                        # unit is always an expression so test first
+                        if self.isUnumAssignment(expression):
+                            #unit assignment, print only result
+                            self.display(self.parseVariable(variable.strip())+" = "+self.numericToString(self.shell.ev(expression)),
+                                        line+" = "+self.numericToString(self.shell.ev(variable.strip())) )
+                        else:
+                            # assignment: variable = expression = number
+                            self.display(self.parseVariable(variable.strip())+" = "+self.py2tex(expression)+" = "+self.numericToString(self.shell.ev(variable.strip())),
+                                        line+" = "+self.numericToString(self.shell.ev(variable.strip())) )
                 
     def display(self,tex,text):
         """Calls the publish_display_data function with tex and text """
@@ -366,9 +351,9 @@ class PrettyPrint(Magics):
         Example return: {'#asUnit': 'mm**2', '#nodisplay': True, '#format': '%.e3'}
         Default return: {"#nodisplay": False}
         """
-        tags = ["#asUnit", "#format", "#nodisplay"]
+        tags = ["#asUnit", "#format", "#nodisplay", "#noresult"]
         parsed = re.split('('+'|'.join(tags)+')',expression)
-        options = {"#nodisplay": False}
+        options = {"#noresult": False, "#nodisplay": False}
         if len(parsed)==1:
             #no option tags
             return options
@@ -382,10 +367,11 @@ class PrettyPrint(Magics):
                             options[parsed[i]] % (3.1415)
                         except ValueError:
                             raise ValueError(options[parsed[i]] + " is not a supported #format")
-                    elif parsed[i]=="#nodisplay":
+                    if parsed[i]=="#nodisplay":
+                        options[parsed[i]] = True
+                    if parsed[i]=="#noresult":
                         options[parsed[i]] = True
             return options
-        
         
     def hasAsUnit(self,expression):
         """Check if the expression has an conversion tag at the end. 
