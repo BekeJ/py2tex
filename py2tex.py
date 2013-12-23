@@ -62,9 +62,12 @@ eg. v = 10*m/s  is not displayed like v = 10*m/s = 10 m/s as in previous version
 
 Version history
 ===============
+    release 0.5:
+    - #format tag implemented (see example notebook)
+
     release 0.4:
     - bugfix for units in expressions
-    - #nodisplay and #format tag (see example notebook)
+    - #nodisplay and #noresult tag (see example notebook)
     - removed %texnr magic
 
     release 0.3:
@@ -194,8 +197,13 @@ class PrettyPrint(Magics):
             #simply execute the wanted line and return function
             self.shell.ex(line)
         else:
+            #parse options
             no_result = options["#noresult"]
             
+            if options.has_key("#format"):
+                globalOutputformat = self.outputFormat
+                self.outputFormat = options["#format"]
+                
             #check for assignment 
             i = line.find("=")
             if i<0 or line[i+1]=='=':
@@ -245,6 +253,10 @@ class PrettyPrint(Magics):
                             # assignment: variable = expression = number
                             self.display(self.parseVariable(variable.strip())+" = "+self.py2tex(expression)+" = "+self.numericToString(self.shell.ev(variable.strip())),
                                         line+" = "+self.numericToString(self.shell.ev(variable.strip())) )
+            if options.has_key("#format"):
+                self.outputFormat = globalOutputformat
+                
+                
                 
     def display(self,tex,text):
         """Calls the publish_display_data function with tex and text """
@@ -349,7 +361,7 @@ class PrettyPrint(Magics):
         with the results
         
         Example return: {'#asUnit': 'mm**2', '#nodisplay': True, '#format': '%.e3'}
-        Default return: {"#nodisplay": False}
+        Default return: {"#noresult": False, "#nodisplay": False}
         """
         tags = ["#asUnit", "#format", "#nodisplay", "#noresult"]
         parsed = re.split('('+'|'.join(tags)+')',expression)
