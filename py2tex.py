@@ -193,6 +193,7 @@ class PrettyPrint(Magics):
     def doLine(self,line, options):
         """Method to convert and print one line
         """
+        globalOutputformat = self.outputFormat
         if options["#nodisplay"]:
             #simply execute the wanted line and return function
             self.shell.ex(line)
@@ -201,7 +202,6 @@ class PrettyPrint(Magics):
             no_result = options["#noresult"]
             
             if options.has_key("#format"):
-                globalOutputformat = self.outputFormat
                 self.outputFormat = options["#format"]
                 
             #check for assignment 
@@ -218,15 +218,18 @@ class PrettyPrint(Magics):
                             line+" = "+self.numericToString(result))
 
             else:
+                
                 # expression was assignment
                 variable = line[:i].strip()
                 expression = line[i+1:].strip()
                 result = self.shell.ev(expression)
                 
                 #check for unit conversion and do conversion on the result if needed
-                if options.has_key("#asUnit"):
-                    result = result.asUnit(self.shell.ev(options["#asUnit"]))
                 
+                if options.has_key("#asUnit"):
+                    
+                    result = result.asUnit(self.shell.ev(options["#asUnit"]))
+                    
                 self.shell.push({variable: result})
                 
                 
@@ -247,8 +250,8 @@ class PrettyPrint(Magics):
                         # unit is always an expression so test first
                         if self.isUnumAssignment(expression):
                             #unit assignment, print only result
-                            self.display(self.parseVariable(variable.strip())+" = "+self.numericToString(self.shell.ev(expression)),
-                                        line+" = "+self.numericToString(self.shell.ev(variable.strip())) )
+                            self.display(self.parseVariable(variable.strip())+" = "+self.numericToString(result),
+                                        line+" = "+self.numericToString(result) ) #self.shell.ev(variable.strip())
                         else:
                             # assignment: variable = expression = number
                             self.display(self.parseVariable(variable.strip())+" = "+self.py2tex(expression)+" = "+self.numericToString(self.shell.ev(variable.strip())),
