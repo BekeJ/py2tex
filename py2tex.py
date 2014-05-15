@@ -426,6 +426,11 @@ class LatexVisitor(ast.NodeVisitor):
     def prec(self, n):
         return getattr(self, 'prec_'+n.__class__.__name__, getattr(self, 'generic_prec'))(n)
 
+    def visit_Attribute(self, n):
+        name = self.visit(n.value)
+        return r'\mathrm{%s}' % (name+"."+n.attr)
+
+
     def visit_Call(self, n):
         func = self.visit(n.func)
         args = ', '.join(map(self.visit, n.args))
