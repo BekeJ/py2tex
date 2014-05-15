@@ -490,7 +490,15 @@ class LatexVisitor(ast.NodeVisitor):
         elif isinstance(n.op, ast.Pow):
             return r'%s^{%s}' % (left, self.visit(n.right))
         else:
-            return r'%s %s %s' % (left, self.visit(n.op), right)
+            #start bugfix 
+            oper = self.visit(n.op)
+            if oper =="-":
+                if right.strip()[:5]==r'\frac':
+                    return r'%s %s %s' % (left, oper, right)
+                if (("+" in right ) or ("-" in right)):
+                    return r'%s %s \left(%s\right)' % (left, oper, right)
+            #end bugfix
+            return r'%s %s %s' % (left, oper, right)
 
     def prec_BinOp(self, n):
         return self.prec(n.op)
