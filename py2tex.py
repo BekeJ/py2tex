@@ -436,7 +436,7 @@ class LatexVisitor(ast.NodeVisitor):
             if self.functions.has_key(func):
                 return r'%s\left(%s\right)' % (self.functions[func], args)
             else:
-                return r'\mbox{%s}\left(%s\right)' % (func, args)
+                return r'%s\left(%s\right)' % (func, args)
 
     def prec_Call(self, n):
         return 1000
