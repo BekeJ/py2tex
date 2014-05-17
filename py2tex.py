@@ -404,6 +404,9 @@ class PrettyPrint(Magics):
 
 
 class LatexVisitor(ast.NodeVisitor):
+    
+    _parseLambda = False #we must take track of while parsing lambda
+    
     # based on source: http://stackoverflow.com/questions/3867028/converting-a-python-numeric-expression-to-latex
     greekLetters = PrettyPrint.greekLetters
     functions = {'arccos': '\\arccos',
@@ -433,7 +436,7 @@ class LatexVisitor(ast.NodeVisitor):
 
     def visit_Call(self, n):
         func = self.visit(n.func)
-        args = ', '.join(map(self.visit, n.args))
+        args = ', \,'.join(map(self.visit, n.args))
         if func == 'sqrt':
             return '\sqrt{%s}' % args
         else:
@@ -441,20 +444,35 @@ class LatexVisitor(ast.NodeVisitor):
             if self.functions.has_key(func):
                 return r'%s\left(%s\right)' % (self.functions[func], args)
             else:
-                return r'%s\left(%s\right)' % (func, args)
+                if r'\mathrm{' in func:
+                    return r'%s\left(%s\right)' % (func, args)
+                else:
+                    return r'\mathrm{%s}\left(%s\right)' % (func, args)
+                
+    def visit_Lambda(self, n):
+        # keep track because visit_Name checks variables
+        # for unum type in the IPyton namespace
+        self._parseLambda = True 
+        
+        args = ', '.join(map(self.visit, n.args.args)) # n.args is of type arguments
+        
+        body = self.visit(n.body)
+        self._parseLambda = False
+        return r'\mbox{lambda} \,\, %s : %s ' % (args, body)
 
     def prec_Call(self, n):
         return 1000
 
     def visit_Name(self, n):
         #test if unum
-        result = get_ipython().ev(n.id) #gets the variable
-        if type(result)==unum.Unum:
-            if n.id in unum.Unum._unitTable.keys():
-                if result._value==1:  
-                    # we must test if value==1. unitTable contains units like L, V, etc.
-                    return "\\mbox{%s}" % n.id
-                    
+        if self._parseLambda == False:
+            result = get_ipython().ev(n.id) #gets the variable
+            if type(result)==unum.Unum:
+                if n.id in unum.Unum._unitTable.keys():
+                    if result._value==1:  
+                        # we must test if value==1. unitTable contains units like L, V, etc.
+                        return "\\mbox{%s}" % n.id
+                        
         # was not a base unit
                     
         #parse greek letters
