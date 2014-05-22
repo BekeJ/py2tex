@@ -458,10 +458,37 @@ class LatexVisitor(ast.NodeVisitor):
         
         body = self.visit(n.body)
         self._parseLambda = False
-        return r'\mbox{lambda} \,\, %s : %s ' % (args, body)
+        return r' %s \overset{f}{\to} %s ' % (args, body)
 
     def prec_Call(self, n):
         return 1000
+        
+    def visit_Subscript(self,n):
+        name = self.visit(n.value)
+        index = self.visit(n.slice)
+        return r'%s%s' % (name, index)
+        
+    def visit_Index(self, n):
+        return r'[%s]' % self.visit(n.value)
+        
+    def visit_Slice(self, n):
+        # slice=Slice(lower=Num(n=1), upper=Num(n=2), step=None)
+        l = ''
+        u = ''
+        s = ''
+        if n.lower!=None:
+            l = '%d' % n.lower.n
+        if n.upper!=None:
+            u = '%d' % n.upper.n
+        if n.step!=None:
+            s = '%d' % n.step.n
+        if n.step!=None:
+            return r'\mbox{[%s:%s:%s]}' % (l, u ,s)
+        else:
+            return r'\mbox{[%s:%s]}' % (l, u )
+            
+    def visit_Str(self,n):
+        return r'{%s}' % n.s
 
     def visit_Name(self, n):
         #test if unum
@@ -484,6 +511,12 @@ class LatexVisitor(ast.NodeVisitor):
         if len(name)>1:
             return name[0]+"_{"+','.join(name[1:])+"}"
         return name[0]
+        
+    def visit_List(self, n):
+		return '['+', '.join([self.visit(I) for I in n.elts])+']'
+		
+    def visit_Tuple(self, n):
+		return '('+', '.join([self.visit(I) for I in n.elts])+')'
 
     def prec_Name(self, n):
         return 1000
