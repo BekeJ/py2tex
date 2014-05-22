@@ -432,11 +432,22 @@ class LatexVisitor(ast.NodeVisitor):
     def visit_Attribute(self, n):
         name = self.visit(n.value)
         return r'\mathrm{%s}' % (name+"."+n.attr)
-
-
+    """
+    def visit_keyword(self, n):
+        return '%s = %s' % (n.arg, self.visit(n.value) )
+    """
     def visit_Call(self, n):
         func = self.visit(n.func)
         args = ', \,'.join(map(self.visit, n.args))
+        
+        #keyword.value can not be visited
+        keyw = []
+        for k in n.keywords:
+            keyw.append(k.arg + "=" + LatexVisitor().visit(ast.parse(k.value)))
+        
+        if len(keyw)>0:
+            args+= ','+', \,'.join(keyw)
+        
         if func == 'sqrt':
             return '\sqrt{%s}' % args
         else:
@@ -513,10 +524,10 @@ class LatexVisitor(ast.NodeVisitor):
         return name[0]
         
     def visit_List(self, n):
-		return '['+', '.join([self.visit(I) for I in n.elts])+']'
-		
+        return '['+', '.join([self.visit(I) for I in n.elts])+']'
+        
     def visit_Tuple(self, n):
-		return '('+', '.join([self.visit(I) for I in n.elts])+')'
+        return '('+', '.join([self.visit(I) for I in n.elts])+')'
 
     def prec_Name(self, n):
         return 1000
